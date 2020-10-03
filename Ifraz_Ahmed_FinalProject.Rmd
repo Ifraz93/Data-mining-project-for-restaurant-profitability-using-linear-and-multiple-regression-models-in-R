@@ -1,0 +1,277 @@
+---
+title: "Restaurant Data Mining Project"
+author: "Ifraz Ahmed"
+date: "Spring 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+```
+
+
+
+# Data Preparation
+Ingest restaurants dataset and create a random sample of 170 restaurants called rt.training.The remaining 30 are stored in a seperate dataset called rt.test. After the random samples have been created, they are exported into the working directory and then imported again so multiple random samples are not generated and skew results. 
+
+
+```{r}
+
+
+#import random sample training and test
+rt.training <- read.csv("C:/Users/frost/Desktop/Spring_2020/BZAN6351_Basic_Programming/Working_Directory/Final_Project/rand_170.csv", header = TRUE)
+
+rt.testing <- read.csv("C:/Users/frost/Desktop/Spring_2020/BZAN6351_Basic_Programming/Working_Directory/Final_Project/rand_130.csv", header = TRUE)
+
+```
+
+
+The cuisine and parking variables are categorical variables but coded as an integer variables. We must change these variables to categorical and add levels. Must perform these changes to both rt.training and rt.test datasets.
+```{r}
+
+
+#change Cusine variable from int to categorical
+rt.training$Cuisine <- as.factor(rt.training$Cuisine)
+rt.testing$Cuisine <- as.factor(rt.testing$Cuisine)
+
+#add levels
+levels(rt.training$Cuisine) <- c("Traditional", "Creative")
+levels(rt.testing$Cuisine) <- c("Traditional", "Creative")
+
+#Change parking to categorical
+rt.training$Parking <- as.factor(rt.training$Parking)
+rt.testing$Parking <- as.factor(rt.testing$Parking)
+
+#add levels to parking
+levels(rt.training$Parking) <- c("Valet", "No Valet")
+levels(rt.testing$Parking) <- c("Valet", "No Valet")
+
+```
+
+
+# Data Exploration 
+
+## Problem 1: Traditional Cusine vs Creative Cusine
+
+How many restaurants from the sample market their food as traditional and how many market as creative? Is there a significant difference in table turns between traditional and creative style restaurants? The following code chunk counts the amount of traditional and creative types of restaurants. Ran t-test to evaluate wether in fact cuisine type has an effect on table turns. 
+
+```{r}
+#traditional vs creative cusine
+cusine.creative <- rt.training[rt.training$Cuisine == "Creative",]
+cusine.traditional <- rt.training[rt.training$Cuisine == "Traditional",]
+
+#turntable statistics between different cusine types
+results <- t.test(Table.Turns ~ Cuisine, data = rt.training, var.equal = TRUE)
+results
+
+
+```
+
+
+Their are `r count(cusine.creative)`  creative restraunts and  `r count(cusine.traditional)` traditional restraunts in the rt.training sample. After running a t-test on the dataset, the corresonding p-value of `r results$p.value`  is greater than the significance level of .05, meaning the type of cuisine a restaurant offers does NOT significantly affect table turns.  
+
+```{r, fig.height= 3, fig.width= 5}
+#Boxplot for cuisine type and table turns
+ggplot(rt.training, aes( x = Cuisine, y = Table.Turns)) + geom_boxplot()
+
+
+
+```
+
+Used ggplot() and geom_boxplot() to create boxplots for traditional vs creative style restaurants. There is one outlier for traditional type restaurants with an unusally low amount of table turns. Creative style restaurants have more variation in table turns than traditional. This may simply be because their are more data points for creative cuisine restaurants (`r count(cusine.creative)`) than traditional (`r count(cusine.traditional) `).   
+
+## Problem 2: Age of restaurants
+Create a new age column and calculate mean, standard deviation, max and min. Subtracted 2019 from year variable to calculate age and and assign it back to rt.training. Used mean(), sd(), min(), and max() functions to calculate descriptive statistics. 
+
+```{r}
+age <- (2019 - rt.training$Year)
+rt.training$age <- age
+
+
+age.mean <- mean(age)
+age.mean
+age.max <- max(age)
+age.max
+age.sd <- sd(age)
+age.sd  
+age.min <- min(age)
+age.min
+
+                       
+                      
+```
+
+The mean, maximuim, minimuim, and standard deviation for age is `r age.mean` `r age.max``r age.min``r age.sd` respectivley. Minimuim age of `r age.min` is interesting because it is a negative number. This is because we are calculating age of the restaurant in 2019 instead of the current year 2020. 
+
+```{r, fig.height= 3, fig.width= 5}
+#Histogram for age
+ggplot(rt.training, aes( x = age)) + 
+  geom_histogram( binwidth = 2)
+
+```
+
+
+Used ggplot() and geom_histogram to display the distribution of age. The histogram shows  age is NOT normally distributed. Changed binwidth to 2 to get a better visualization of the distribution. 
+
+# Regression Modeling and Interpretations 
+
+## Problem 3: Regression Model
+Using lm() function to fit a multiple linear regression model to understand how different variables affect table turns. Table turns is a metric that measures volume of customers and is key to measuring success in the dining business. ID and age variables are not included in the model because ID is used to identify the restaurant while age is already being factored in with the year variable. After assigning the regression model to tt.lm, we use summary() to access detailed results including the p-value which can tell us the overall significance of all the explanatory variables. Also used options() function to convert output from scientific notation to 4 decimal places for easier readability.
+
+```{r}
+
+tt.lm <- lm(Table.Turns ~ Advertising + Adsplay + Year + Days + Price + Parking + Rating + Cuisine , data = rt.training)
+
+options(scipen = 5)
+results <- summary(tt.lm)
+
+results
+```
+Table turns is the response variable y. Advertising, Adsplay, Year, Days, Price, Parking, Rating and Cuisine are all explanatory variables x. The regression model gives us insight on how each variable affects table turns and wether or not the overall model is a significant predictor of the response variable. According to the table, the p-value is small, so the overall model is significant. 
+
+
+
+
+
+
+## Problem 4: Interpreting Results
+Interpret results by following the five steps. Step 1) Interpreting overall model. Step 2) Interpreting regression coefficients (beta). Step 3) Formulate the estimated regression equation. Step 4) Assess the model by calculating R-squared and adjusted R-squared values. Step 5) Predict the table turns by plugging in values for the response variables using the regression model. Step 5 will be done in Prediction and Validation section. 
+
+### Step 1: Interpret Overall Model
+
+After inspecting the regression model, we see that the p-value is small, meaning the model can predict table turns in a significant way.  
+
+
+
+### Step 2: Interpret Regression Coefficients
+
+Step 2 involves identifying specific variables that are significant. This can be done by extracting  the coefficients table within the regression. If any variable has a p-value greater than .05, that variable must be removed and regression model must be run again WITHOUT the variable(s) with p-value > .05. 
+
+```{r}
+
+r.co <- results$coefficients
+r.co
+
+```
+Examine the p-value for every variable and decide wether it should stay in the model or not by evaluating if p-value is less than .05. 
+
+1. Advertising - p-value: `r r.co[2,4]` < .05, keep in the model
+
+2. Adsplay - p-value: `r r.co[3,4]` < .05, keep in the model
+
+3. Year - p-value: `r r.co[4,4]` > .05, REMOVE from model
+
+4. Days - p-value: `r r.co[5,4]` > .05, REMOVE from model
+
+5. Price - p-value: `r r.co[6,4]` < .05, keep in the model
+
+6. Parking - p-value: `r r.co[7,4]` > .05, REMOVE from model
+
+7. Rating - p-value: `r r.co[8,4]` < .05, keep in the model
+
+8. Cuisine - p-value: `r r.co[9,4]` > .05, REMOVE from model
+
+Year, Days, Cuisine, and Parking have to be removed and the model must be run again without these variables.  
+
+```{r}
+#Rerun regression with variables with p-value > .05 removed
+updated.lm <- lm(Table.Turns ~ Advertising + Adsplay +  Price + Rating , data = rt.training)
+
+
+updated_results <- summary(updated.lm)
+
+#Coefficients table
+update.coef <- updated_results$coefficients
+update.coef
+
+```
+ There is no p-value greater than .05 for any variable, meaning every variable is significant. This will be the model used going forward. 
+
+
+
+
+### Step 3: Estimated Regression Equation
+The estimated regression equation will allow us to predict table turns by plugging in values for each variable. 
+
+```{r}
+update.coef
+```
+
+Table.Turns = `r update.coef[1,1] ` + (`r update.coef[2,1] ` * Advertising) +  (`r update.coef[3,1] ` * Adsplay) + 
+ (`r update.coef[4,1] ` * Price) +  (`r update.coef[5,1] ` * Rating). From the regression model, we see that Advertising has a low impact on table turns while Rating has the highest. Suggest for the client to remove advertising. Rating has the highest impact, it would be in the best interest of the client to have a high rating to get higher table turns. 
+
+
+### Step 4: Assess the Model
+We can asses the model by calculating R-squared and adjusted R-squared values. R-squared value tell us what percentage of table turns is caused by the explanatory variables. The adjusted R-squared value adjusts R-square based on the amount of explanatory variables.
+
+```{r}
+
+
+r.value <- updated_results$r.squared
+r.value
+adj.r_value <- updated_results$adj.r.squared
+adj.r_value
+
+
+```
+The R-square and adjusted R-square values are `r r.value` and `r adj.r_value` respectivley. This tells us around `r round(r.value, digits = 2)`  of table turns is caused by the explanatory variables and around `r round(adj.r_value, digits = 2)` when adjusting for the number of independent variables. 
+
+# Prediction and Validation  
+
+## Problem 5
+### Step 5: Prediction
+Based on the regression model Table.Turns = `r update.coef[1,1] ` + (`r update.coef[2,1] ` * Advertising) +  (`r update.coef[3,1] ` * Adsplay) + 
+ (`r update.coef[4,1] ` * Price) +  (`r update.coef[5,1] ` * Rating), predict 10 restaurants with highest table turns and list the corresponding IDs. We have to use the model we came up with from the training dataset on the test dataset. Use predict() and order() to accomplish this task.  
+
+```{r}
+
+#Using predict() to predict table turn value
+test_predict <- predict(updated.lm, rt.testing)
+test_predict
+output <- cbind(rt.testing, test_predict)
+
+#Sort by table turns highest to lowest
+#Extract IDs for predicted top 10 table turns
+output.sorted <- output[order(-test_predict),]
+top_10.ID <- head(output.sorted$ID, 10)
+top_10.ID
+```
+Restaruants `r top_10.ID` have the highest predicted table turns value. 
+ 
+
+
+## Problem 6: Validate Results
+Compare the predicted table turn values with the actual table turn values from rt.testing dataset. Assign the actual top ten restaurants to another variable and validate results by using the  %in% operator to see how many restaurants from the predicted model are in the actual model.  
+
+```{r}
+
+#Extract IDs for actual top 10 restaurants with highest table turns
+#Sort by table turns, then take top 10 ID
+actual.sorted <- rt.testing[order(-rt.testing$Table.Turns),]
+actual_10 <- head(actual.sorted$ID, 10)
+actual_10
+ 
+#IDs for predicted restaurants
+top_10.ID
+
+#validation
+validate <- actual_10 %in% top_10.ID
+validate
+
+```
+
+The predicted restaurants are `r top_10.ID` and the actual restaurants are `r actual_10`. There are `r length(validate[validate == TRUE])` restaurants from the predicted model in the testing dataset. `r length(validate[validate == TRUE])` out of 10 predictions are correct.  
+
+# Appendix
+
+## A conceptual note on the project procedure
+
+First I imported the restaurants dataset and assigned it to "restaurants". Then to get random sample of 170 for rt.training I used "rand_170 <- sample_n(restaurants, 170, replace = FALSE)". After that I created a vector called rt.ID with the IDs from rand_170. After that I used rand_30 <- restaurants[-rt.ID,] to extract rows that did not make it in training dataset.
+
+
+
+
+
