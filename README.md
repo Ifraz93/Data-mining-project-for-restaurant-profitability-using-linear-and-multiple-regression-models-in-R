@@ -2,7 +2,7 @@
 Dr. Jinghui (Jove) Hou BZAN6351/4397 Spring 2020
 1
 Final Project
-Project Description
+Project Description \n
 **Introduction**
 This project will give you an opportunity to apply many of the data analytical techniques covered in class. It will also allow you to indulge in working with a comprehensive data set collected from a real business context. In this project, you will have a chance to showcase your analytical techniques as well as decision-making skills on a new business problem. As the outcome of this project, you will make business decisions that are informed by data analyses.
 Major Objective and The Data
